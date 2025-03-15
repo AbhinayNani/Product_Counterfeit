@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Counterfeit Product Detection</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,100,300,700" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/qr_code_box.css">
+</head>
+
+<body>
+    <section class="ftco-section">
+        <div class="container-fluid px-md-5">
+            <div class="row justify-content-between">
+                <div class="col-md-8 order-md-last">
+                    <div class="row">
+                        <div class="col-md-6 text-center">
+                            <a class="navbar-brand" href="index.html">Counterfeit Product Detection <span>through Blockchain</span></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 d-flex">
+                    <div class="social-media"></div>
+                </div>
+            </div>
+        </div>
+        <nav class="navbar navbar-expand-lg navbar-dark ftco_navbar bg-dark ftco-navbar-light" id="ftco-navbar">
+            <div class="container-fluid">
+                <div class="collapse navbar-collapse" id="ftco-nav">
+                    <ul class="navbar-nav m-auto">
+                        <li class="nav-item"><a href="index.html" class="nav-link">Home</a></li>
+                        <li class="nav-item"><a href="patentreg.html" class="nav-link">Patent Registration</a></li>
+                        <li class="nav-item"><a href="patentver.html" class="nav-link">Patent Verification</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Add Patent</h2>
+            <div class="matrix">
+                <table width="100%">
+                    <tr width="100%">
+                        <td width="15%" align="center">
+                            <label for="manufacturerID">Patent Title</label>
+                        </td>
+                        <td width="30%">
+                            <input class="form-control" id="patenttitle" name="patenttitle" type="text" />
+                        </td>
+                        <td width="15%" align="center">
+                            <label for="name">Patent Number</label>
+                        </td>
+                        <td width="30%">
+                            <input class="form-control" id="patentnumber" name="patentnumber" type="text" />
+                        </td>
+                    </tr>
+
+                    <tr width="100%">
+                        <td width="15%" align="center">
+                            <label for="patentnumber">Inventors Name</label>
+                        </td>
+                        <td width="30%">
+                            <input class="form-control" id="inventorsname" name="inventorsname" type="text" />
+                        </td>
+                        <td width="15%" align="center">
+                            <label for="date">Filling date</label>
+                        </td>
+                        <td width="30%">
+                            <input class="form-control" id="fillingdate" name="fillingdate" type="date" />
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="clear">&nbsp;</div>
+            <div align="center">
+                <button type="submit" class="btn btn-warning btn-register" id="register" onclick="fetchQR()">Add the Patent</button>
+            </div>
+            <br></br>
+        </div>
+    </section>
+
+    <div class="qr-code">
+        <div align="center">
+            <img align="center" hidden id="imgQR" src="" alt="qr-code">
+        </div>
+        <br></br>
+        <div align="center">
+            <button align="center" hidden type="submit" class="btn btn-warning" id="download" onclick="saveImage()">Download QR Code</button>
+        </div>
+    </div>
+
+    <br></br>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="js/popper.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+    <script src="js/truffle-contract.js"></script>
+    <script src="js/patentApp.js"></script>
+
+    <script>
+        async function fetchQR() {
+    if (typeof window.ethereum === 'undefined') {
+        alert("Please install MetaMask!");
+        return;
+    }
+
+    const web3 = new Web3(window.ethereum);
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+    const accounts = await web3.eth.getAccounts();
+    if (accounts.length === 0) {
+        alert("Please connect to MetaMask.");
+        return;
+    }
+
+    const patentTitle = document.getElementById('patenttitle').value.trim();
+    const patentNumber = document.getElementById('patentnumber').value.trim();
+    const filingDate = document.getElementById('fillingdate').value.trim();
+    const inventorsName = document.getElementById('inventorsname').value.trim();
+
+    if (!patentTitle || !patentNumber || !filingDate || !inventorsName) {
+        alert("Please fill all fields before adding the patent.");
+        return;
+    }
+
+    const contractAddress = "0xb07Bf679388513721b6Df180637c1f851b8ACD96"; // Replace with actual contract address
+    const contractABI =[
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "patentNumber",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "title",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "filingDate",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "inventorsName",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			}
+		],
+		"name": "PatentRegistered",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_patentNumber",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_title",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_filingDate",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_inventorsName",
+				"type": "string"
+			}
+		],
+		"name": "registerPatent",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_patentNumber",
+				"type": "string"
+			}
+		],
+		"name": "verifyPatent",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+]; // Replace with actual ABI
+
+    const contract = new web3.eth.Contract(contractABI, contractAddress);
+
+    try {
+        console.log("Registering patent on blockchain...");
+        const result = await contract.methods.registerPatent( patentNumber,patentTitle, filingDate, inventorsName)
+            .send({ from: accounts[0] });
+
+        console.log("Transaction successful:", result);
+        alert("Patent added successfully to the blockchain!");
+
+        // Generate QR Code
+        const qrData = `Patent Title: ${patentTitle}\nPatent Number: ${patentNumber}\nFiling Date: ${filingDate}\nInventor(s): ${inventorsName}`;
+        const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
+
+        document.getElementById('imgQR').src = qrSrc;
+        document.getElementById('imgQR').removeAttribute('hidden');
+        document.getElementById('download').removeAttribute('hidden');
+
+    } catch (error) {
+        console.error("Transaction failed:", error);
+        alert("Transaction failed! Please check the console for details.");
+    }
+}
+
+function saveImage() {
+    const patentNumber = document.getElementById('patentnumber').value.trim();
+    const qrImage = document.getElementById('imgQR');
+
+    if (!qrImage.src) {
+        alert("QR code not found!");
+        return;
+    }
+
+    const fileName = patentNumber ? `${patentNumber}.png` : "patent-qr.png";
+    saveAs(qrImage.src, fileName);
+}
+
+    </script>
+</body>
+
+</html>

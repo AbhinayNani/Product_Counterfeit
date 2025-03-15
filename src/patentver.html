@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Counterfeit Product Detection</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href='https://fonts.googleapis.com/css?family=Roboto:400,100,300,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <section class="ftco-section">
+        <div class="container-fluid px-md-5">
+            <div class="row justify-content-between">
+                <div class="col-md-8 order-md-last">
+                    <div class="row">
+                        <div class="col-md-6 text-center">
+                            <a class="navbar-brand" href="index.html">Counterfeit Product Detection <span>through Blockchain</span></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <nav class="navbar navbar-expand-lg navbar-dark ftco_navbar bg-dark ftco-navbar-light" id="ftco-navbar">
+            <div class="container-fluid">
+                <div class="collapse navbar-collapse" id="ftco-nav">
+                    <ul class="navbar-nav m-auto">
+                        <li class="nav-item"><a href="index.html" class="nav-link">Home</a></li>
+                        <li class="nav-item"><a href="patentreg.html" class="nav-link">Patent Registration</a></li>
+                        <li class="nav-item"><a href="patentver.html" class="nav-link">Patent Verification</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <section class="verify-section">
+            <div class="container text-center">
+                <h2>Verify Patents</h2>
+
+                <div class="scanner-container">
+                    <div id="qr-reader"></div>
+                    <div id="qr-reader-results"></div>
+                </div>
+
+                <div class="form-container">
+                    <div class="form-group">
+                        <label for="patentnumber">Patent Number:</label>
+                        <input type="text" class="form-control" id="patentnumber" placeholder="Scanned Patent Number" name="patentnumber">
+
+                        <!-- <label for="fillingdate">Filing Date:</label>
+                        <input type="date" class="form-control" id="fillingdate" placeholder="Enter Filing Date" name="fillingdate"> -->
+                    </div>
+
+                    <button type="submit" class="btn btn-warning btn-register" id="register" onclick="verifyPatent()">Get Patent Status</button>
+                </div>
+            </div>
+        </section>
+
+        <br />
+        <section>
+            <div class="container">
+                <h2>Patent Verification Result</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Patent Number</th>
+                            <th>Filing Date</th>
+                            <th>Inventor's Name</th>
+                            <th>Owner Address</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logdata">
+                        <!-- Patent details will be dynamically inserted here -->
+                    </tbody>
+                </table>
+                <center>
+                    <p>Your address is <b id="add"> 0x044653cb708Ce5703Bb2039c81beBf08eb4c34e5</b></p>
+                </center>
+            </div>
+        </section>
+        
+        
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <script src="js/popper.js"></script>
+        <script src="js/bootstrap.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+        <script src="js/truffle-contract.js"></script>
+        <script src="js/patentApp.js"></script>
+    
+        <!-- <script src="js/verifyProduct.js"></script> -->
+        <script src="https://unpkg.com/html5-qrcode"></script>
+        <!-- <script src="js/PatentApp.js"></script> -->
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                var lastResult = "";
+                var countResults = 0;
+                var patentNumber;
+                var qrResultElement = document.getElementById('qr-reader-results');
+        
+                function onScanSuccess(decodedText, decodedResult) {
+                    if (decodedText !== lastResult) {
+                        countResults++;
+                        lastResult = decodedText;
+        
+                        // Play a beep sound on successful scan
+                        var audio = new Audio('beep.wav');
+                        audio.play();
+        
+                        console.log(`Scan result: ${decodedText}`, decodedResult);
+        
+                        if (qrResultElement) {
+                            qrResultElement.innerHTML = decodedText;
+                        }
+        
+                        // Call the function to parse the QR code and fetch data
+                        parseQrDataAndVerify(decodedText);
+                    }
+                }
+        
+                var html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 250 });
+                html5QrcodeScanner.render(onScanSuccess);
+            });
+        
+            // Function to parse QR code data and verify the patent on the blockchain
+            function parseQrDataAndVerify(qrData) {
+                // Extract the patent number, filing date, and inventor(s) from the scanned QR data
+                const regex = /Patent Number: (\S+)\nFiling Date: (\S+)\nInventor\(s\): (.+)/;
+                const match = qrData.match(regex);
+        
+                if (match) {
+                    patentNumber = match[1];
+                    const filingDate = match[2];
+                    const inventorsName = match[3];
+        
+                    // Populate the table with the extracted data
+                    addDataToTable(patentNumber, filingDate, inventorsName);
+        
+                    // Call the function to verify patent from blockchain
+                    verifyPatent();
+                } else {
+                    alert("QR Code is not valid or doesn't contain the required data.");
+                }
+            }
+        
+            // Function to add data to the table
+            function addDataToTable(patentNumber, filingDate, inventorsName) {
+                const logData = document.getElementById('logdata');
+                logData.innerHTML += `
+                    <tr>
+                        <td>${patentNumber}</td>
+                        <td>${filingDate}</td>
+                        <td>${inventorsName}</td>
+                        <td>0x044653cb708Ce5703Bb2039c81beBf08eb4c34e5</td> <!-- Empty column for Owner Address, which will be populated after blockchain check -->
+                    </tr>
+                `;
+            }
+            
+ // Only keeping relevant part of ABI
+
+ async function verifyPatent() {
+    try {
+        // Ensure MetaMask is installed
+        if (typeof window.ethereum === "undefined") {
+            alert("MetaMask is not installed! Please install it to continue.");
+            return;
+        }
+
+        // Initialize Web3 with window.ethereum
+        let web3;
+        if (window.ethereum) {
+            web3 = new Web3(window.ethereum);
+            await window.ethereum.request({ method: "eth_requestAccounts" });
+        } else {
+            alert("Ethereum provider (MetaMask) not found!");
+            return;
+        }
+
+        // 🔹 Check if Web3 is properly initialized
+        if (!web3) {
+            alert("Web3 not initialized!");
+            return;
+        }
+
+        // 🔹 Check if network ID can be fetched
+        let networkId;
+        try {
+            networkId = await web3.eth.net.getId();
+            console.log("Connected Network ID:", networkId);
+        } catch (error) {
+            console.error("Failed to get network ID:", error);
+            alert("Could not fetch network ID. Ensure MetaMask is connected.");
+            return;
+        }
+
+        // Ensure the user is on the expected network
+        const expectedNetworkId = "5777"; // Change this to your actual network ID
+        if (networkId.toString() !== expectedNetworkId) {
+            alert("Please switch to the correct blockchain network in MetaMask.");
+            return;
+        }
+
+        // Hardcoded account instead of fetching dynamically
+        const account = "0x044653cb708Ce5703Bb2039c81beBf08eb4c34e5"; 
+        console.log("Using hardcoded account:", account);
+
+        // Get patent number from input
+        // const patentNumber = document.getElementById("patentInput").value.trim();
+        // if (!patentNumber) {
+        //     alert("Patent number is required!");
+        //     return;
+        // }
+
+        const contractAddress = "0xb07Bf679388513721b6Df180637c1f851b8ACD96"; 
+        const contractABI =[
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "patentNumber",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "title",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "filingDate",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "inventorsName",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			}
+		],
+		"name": "PatentRegistered",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_patentNumber",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_title",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_filingDate",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_inventorsName",
+				"type": "string"
+			}
+		],
+		"name": "registerPatent",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_patentNumber",
+				"type": "string"
+			}
+		],
+		"name": "verifyPatent",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+
+        const contract = new web3.eth.Contract(contractABI, contractAddress);
+        console.log("Verifying patent on blockchain...");
+
+        // Verify patent via smart contract
+        let result;
+        try {
+            result = await contract.methods.verifyPatent(patentNumber).call();
+        } catch (error) {
+            console.error("Smart contract call failed:", error);
+            alert("Error fetching patent data. Check console for details.");
+            return;
+        }
+
+        console.log("Patent verification result:", result);
+
+        // Ensure result is valid
+        if (!result || !Array.isArray(result) || result.length < 5) {
+            console.error("Unexpected response:", result);
+            alert("Patent not found or invalid response from contract.");
+            return;
+        }
+
+        const [isValid, title, filingDate, inventorsName, owner] = result;
+
+        // Update last row in the table
+        const logData = document.getElementById("logdata");
+        let lastRow = logData.rows[logData.rows.length - 1];
+
+        if (!lastRow || lastRow.cells.length < 5) {
+            lastRow = logData.insertRow(); 
+            for (let i = 0; i < 5; i++) lastRow.insertCell(i);
+        }
+
+        lastRow.cells[0].innerText = patentNumber;
+        lastRow.cells[1].innerText = title;
+        lastRow.cells[2].innerText = filingDate;
+        lastRow.cells[3].innerText = inventorsName;
+        lastRow.cells[4].innerText = isValid ? owner : "Patent Not Found!";
+
+        // Display user's wallet address
+        document.getElementById("add").innerText = account;
+
+    } catch (err) {
+        console.error("Error verifying patent:", err);
+        alert("Failed to verify patent. Check the console for details.");
+    }
+}
+
+</script> 
+</section>
+</body>
+</html>
